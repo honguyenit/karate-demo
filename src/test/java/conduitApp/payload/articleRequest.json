@@ -1,0 +1,10 @@
+{
+    "article": {
+      "title": "Article Title",
+      "description": "Article Summary",
+      "body": "Article Content",
+      "tagList": [
+        "GitHub"
+      ]
+    }
+  }

@@ -1,0 +1,16 @@
+version: '3.9'
+services:
+  karate-test:
+    image: karate-tests
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      # synchronize the target directory on the host with the /usr/src/app/target directory in the container  
+      - ./target:/usr/src/app/target
+      - ~/.m2:/root/.m2
+    env_file:
+      - .env # Load environment variables from the .env file
+    environment:
+      - KARATE_ENV
+    command: sh -c "mvn test -Dkarate.env=${KARATE_ENV} -Dkarate.options='--tags ~@mock'"

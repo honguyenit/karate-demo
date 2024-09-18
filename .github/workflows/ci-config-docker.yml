@@ -1,0 +1,67 @@
+name: Karate Tests using Docker File & Compose
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'The environment to use'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - qa
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set up Docker BuildKit
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+    
+      - name: Set environment variable for Docker
+        run: echo "KARATE_ENV=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+
+      - name: Set up .env file
+        run: |
+          echo "API_URL=${{ secrets.API_URL }}" >> .env
+          echo "DEV_USERNAME=${{ secrets.DEV_USERNAME }}" >> .env
+          echo "DEV_USEREMAIL=${{ secrets.DEV_USEREMAIL }}" >> .env
+          echo "DEV_USERPASSWORD=${{ secrets.DEV_USERPASSWORD }}" >> .env
+          echo "QA_USERNAME=${{ secrets.QA_USERNAME }}" >> .env
+          echo "QA_USEREMAIL=${{ secrets.QA_USEREMAIL }}" >> .env
+          echo "QA_USERPASSWORD=${{ secrets.QA_USERPASSWORD }}" >> .env
+          echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> .env
+          echo "DOCKER_PASSWORD=${{ secrets.DOCKER_PASSWORD }}" >> .env
+
+      - name: Build Docker image and run tests
+        run: docker-compose up --build --abort-on-container-exit
+        env:
+          KARATE_ENV: ${{ github.event.inputs.environment }}
+
+      - name: Archive Karate Report
+        if: always()  # Ensure this step runs even if the previous step fails
+        run: |
+          mkdir -p reports
+          docker cp $(docker-compose ps -q karate-test):/usr/src/app/target/karate-reports ./reports
+          tar -czf karate-reports.tar.gz -C ./reports/karate-reports .
+        shell: bash
+
+      - name: Upload Karate Report Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: karate-reports
+          path: karate-reports.tar.gz
